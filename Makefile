@@ -1,4 +1,3 @@
-
 all: sdp_server sdp_client
 
 sdp_server: server.c

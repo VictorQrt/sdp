@@ -5,13 +5,10 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
-int main(int argc, char ** argv)
-{
-  if(argc != 5)
-  {
-    printf("Error : bad arguments\nUsage : SDP_Client <server IP> <clientID> <dataType> <value>\n");
-    return 0;
-  }
+int main(int argc, char ** argv) {
+    if(argc != 5) {
+        printf("Error : bad arguments\nUsage : SDP_Client <server IP> <clientID> <dataType> <value>\n");
+    }
 
-  return 0;
+    return 0;
 }
