@@ -1,0 +1,142 @@
+
+
+
+
+
+
+
+
+
+
+                            SENSOR DATA PROTOCOL
+
+
+
+
+
+
+
+                                October 2017
+
+
+
+
+
+
+
+                               Victor QUERETTE
+
+
+
+
+
+
+
+
+
+
+
+
+The Sensor Data Protocol is a communication protocol used to retrieve data from
+sensor boxes all connected to a server. The data is exclusively numerical and
+is the measurment of one or more of the following physical quantities in the
+sensor box's room :
+
+
+    - Temperature (in °C, as a decimal number superior to -273.15)
+
+    - Hygrometry (as a decimal number between 0 and 100)
+
+    - Rate of CO² (as a decimal number  between 0 and 100)
+
+
+The sensor box may communicate any of those quantities at any time to the server
+and the latter will store it for future exploitation.
+Any client machine can be considered a sensor box and send measurment data to
+the server; a client has to specify an ID which the server will use to label the
+data sources.
+
+
+As the server does not make any difference between the client hosts and sensor
+boxes, both will be referred to as "clients" or "client hosts".
+
+
+The hosts may send two distinct types of messages to the server :
+
+
+    - Sensor Data Update (SDU) messages, which are the messages sensor boxes
+      must send for the server to store the transmitted data
+
+    - Measurments Statistics Requests (MSR) messages, which are client request
+      to access information provided by the server, based on its stored previous
+      measurments.
+
+
+The server may send two distinct types of answers to a client, both of which are
+answering a MSR request :
+
+
+    - MSR replies, which contain the information asked by the concerned MSR.
+
+    - Illegal Request Warnings (IRW), warning a client not to expect an answer
+      from the server as its request was invalid.
+
+
+The server never replies to SDU messages as the sensor boxes do not need to know
+if their update was taken into account. Therefore, if an SDU is correct, its
+data is properly labelled and stored. On the other hand, if invalid, the SDU is
+simply dropped. If a client wants to check if its SDU was correct and taken into
+account, he has to send a separate MSR fltering the information with the sensor
+ID it provided in the previous SDU, and possibly a time filtering based on the
+SDU timestamp.
+
+
+SDU messages must be composed using the following syntax :
+
+
+	SDU <hostID> <dataType> <value> <timestamp>
+
+
+Each field must contain no spaces, otherwise the SDU is invalid.
+The dataType must be "temp", "hrate", "co2rate", otherwise the SDU is invalid.
+The value must satisfy the previously required conditions, relatively to each
+dataType. The timestamp must be written as follows :
+<dayn°>_<monthn°>_<year>_<hour>_<minute>_<second>, otherwise the SDU is
+invalid.
+
+
+MSR messages must be composed using the following syntax :
+
+
+	MSR <resID> <dataType> <op> <begin> <end> <sourceHosts>
+
+
+The op (operation) must be "min", "max" or "avg". The begin and end fields are
+timestamps to determine the time interval where to fetch the data.
+The sourceHosts field is a list of IDs, separated by semicolons. * as this field
+means all hosts.
+
+
+MSR replies must be composed using the following syntax :
+
+
+  MSR_REPLY <reqID> <value>
+
+
+The value is just the asked value. The reqID field in MSR requests and replies
+are supposed to handle the case where a host asks multiple MSR at a time, by
+running multiple instances of a simple client for example, and still provide an
+appropriate answer for each request.
+
+
+IRW warnings must be composed using the following syntax :
+
+
+  IRW <reqID>
+
+
+Where reqID relates to the invalid request. If none was given (which is invalid)
+it is set to -1.
+
+
+The SDP protocol has to communicate on port 42283 using UDP datagrams.
