@@ -5,19 +5,23 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <string.h>
-#include <stdbool.h>
 #include <time.h>
 
+typedef enum msg_type {SDU, MSR, REP, IRW, INV} msg_type;
+
+typedef struct message {
+    msg_type type;
+    char* raw_msg;
+    char** fields;
+} message;
+
 void printctime();
-void handleInput(char buf[], struct sockaddr_in* srcAddr);
-int validate(char msg[], int msgSize);
-bool SDU_validate(char msg[]);
-//bool MSR_validate();
-//void SDU_handle();
-//void MSR_handle();
+void handleInput(char* buf, struct sockaddr_in* src_addr);
+message* parse_msg(char* msg, int msg_size);
+void free_msg(message* msg);
 
 int main() {
-    const unsigned short servPort = 42283;
+    const unsigned short serv_port = 42283;
     const unsigned int addr = (0 << 24) + (0 << 16) + (0 << 8) + 0;
 
     int sfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -29,7 +33,7 @@ int main() {
 
     struct sockaddr_in saddr;
     saddr.sin_family = AF_INET;
-    saddr.sin_port = htons(servPort);
+    saddr.sin_port = htons(serv_port);
     saddr.sin_addr.s_addr = htonl(addr);
 
     if(bind(sfd, (struct sockaddr*) &saddr, sizeof(saddr)) == -1) {
@@ -41,12 +45,12 @@ int main() {
     printf("SDP SERVER INITIALIZED\n");
 
     char buf[BUFSIZ];
-    struct sockaddr_storage srcAddr;
-    socklen_t srcLen = sizeof(srcAddr);
+    struct sockaddr_storage src_addr;
+    socklen_t srcLen = sizeof(src_addr);
 
-    while(recvfrom(sfd, buf, BUFSIZ, 0, (struct sockaddr*) &srcAddr, &srcLen)) {
+    while(recvfrom(sfd, buf, BUFSIZ, 0, (struct sockaddr*) &src_addr, &srcLen)) {
         if(fork() == 0)
-            handleInput(buf, (struct sockaddr_in *) &srcAddr);
+            handleInput(buf, (struct sockaddr_in *) &src_addr);
     }
 
     return 0;
@@ -58,56 +62,70 @@ void printctime() {
     printf("[%d:%d:%d] ", tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
-void handleInput(char buf[], struct sockaddr_in* srcAddr) {
-    int msgSize;
-    for(msgSize = 0; buf[msgSize] != '\n'; msgSize++);
+void handleInput(char* buf, struct sockaddr_in* src_addr) {
+    int msg_size;
+    for(msg_size = 0; buf[msg_size] != '\n'; msg_size++);
 
-    char msg[msgSize];
+    char msg[msg_size];
 
-    for(int i = 0; i<msgSize; i++)
+    for(int i = 0; i<msg_size; i++)
         msg[i] = buf[i];
-    msg[msgSize] = '\0';
+    msg[msg_size] = '\0';
 
-    unsigned char *srcIP = (unsigned char *) &srcAddr->sin_addr.s_addr;
+    unsigned char *srcIP = (unsigned char *) &src_addr->sin_addr.s_addr;
     printctime();
     printf("\"%s\"", msg);
     printf(" from %d.%d.%d.%d", srcIP[0], srcIP[1], srcIP[2], srcIP[3]);
 
-    int validation = validate(msg, msgSize);
+    message* inc_msg = parse_msg(msg, msg_size);
 
-    if(validation == 0) {
+    if(inc_msg->type == INV) {
         printf(" [INVALID] [MESSAGE DROPPED]\n");
     }
     else {
         printf("\n");
     }
+
+    free_msg(inc_msg);
 }
 
-int validate(char msg[], int msgSize) {
-    if(msgSize < 3)
-        return 0;
+message* parse_msg(char* const msg, const int msg_size) {
+    char* raw_msg = malloc(msg_size * sizeof(char));
+    *raw_msg = *msg;
+    message* res = malloc(sizeof(message));
+    *res = (message) {INV, raw_msg, NULL};
 
-    char type[3];
-    strncpy(type, msg, 3);
-    type[3] = '\0';
+    if(msg_size < 3)
+        return res;
 
-    if(strcmp(type, "SDU") == 0) {
-        //validate_SDU
-        return 1;
+    char type[4];
+    strncpy(type, msg, 4);
+
+    char* _str = strdup(msg);
+
+    if(strcmp(type, "SDU ") == 0) {
+        res->type = SDU;
+        res->fields = malloc(5 * sizeof(char*));
+
+        for(int i=0; i<5; i++)
+            res->fields[i] = strsep(&_str, " ");
     }
-    else if(strcmp(type, "MSR") == 0) {
-        //validate_MSR
-        return 2;
+
+    else if(strcmp(type, "MSR ") == 0) {
+        res->type = MSR;
+        res->fields = malloc(7 * sizeof(char*));
+
+        for(int i=0; i<7; i++)
+            res->fields[i] = strsep(&_str, " ");
     }
-    else {
-        return 0;
-    }
+
+    free(_str);
+
+    return res;
 }
 
-bool SDU_validate(char msg[]) {
-    //char * last_token = strtok(msg, " ");
-
-    //validate all fields
-
-    return true;
+void free_msg(message* msg) {
+    free(msg->raw_msg);
+    free(msg->fields);
+    free(msg);
 }

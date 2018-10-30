@@ -94,7 +94,7 @@ SDU timestamp.
 SDU messages must be composed using the following syntax :
 
 
-	SDU <hostID> <dataType> <value> <timestamp>
+    SDU <hostID> <dataType> <value> <timestamp>
 
 
 Each field must contain no spaces, otherwise the SDU is invalid.
@@ -108,7 +108,7 @@ invalid.
 MSR messages must be composed using the following syntax :
 
 
-	MSR <resID> <dataType> <op> <begin> <end> <sourceHosts>
+    MSR <resID> <dataType> <op> <begin> <end> <sourceHosts>
 
 
 The op (operation) must be "min", "max" or "avg". The begin and end fields are
@@ -120,7 +120,7 @@ means all hosts.
 MSR replies must be composed using the following syntax :
 
 
-  MSR_REPLY <reqID> <value>
+  REP <reqID> <value>
 
 
 The value is just the asked value. The reqID field in MSR requests and replies
